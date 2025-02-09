@@ -1,111 +1,142 @@
 //! # Interval Set Operations Module
-//! 
-//! This module provides implementations for interval set operations through the `Interval` type,
-//! which manages collections of `AtomicInterval`s and supports various set operations.
-//! 
+//!
+//! This module provides implementations for interval set operations through the [`IntervalSet`] type,
+//! which manages collections of [`AtomicInterval`]s and supports various set operations.
+//!
 //! ## Core Features
-//! 
+//!
 //! - Create interval sets from atomic intervals
 //! - Perform set operations (union, intersection, difference)
 //! - Handle both overlapping and disjoint intervals
-//! 
+//!
 //! ## Main Types
-//! 
-//! - `Interval<T>`: A collection of atomic intervals supporting set operations
-//! 
+//!
+//! - [`IntervalSet<T>`]: A collection of atomic intervals supporting set operations
+//!
 //! ## Operations
-//! 
+//!
 //! The module supports these primary set operations:
-//! 
+//!
 //! - **Union**: Combines intervals, merging overlapping or adjacent ones
 //! - **Intersection**: Finds common regions between intervals
 //! - **Difference**: Computes regions present in one interval but not another
-//! 
+//!
 //! ## Example
-//! 
+//!
 //! ```rust
-//! use timekeep_rs::{Interval, AtomicInterval};
-//! 
+//! use timekeep_rs::{IntervalSet, AtomicInterval};
+//!
 //! // Create two intervals
-//! let a = Interval::from(AtomicInterval::closed(1, 5));
-//! let b = Interval::from(AtomicInterval::closed(3, 7));
-//! 
+//! let a = IntervalSet::from(AtomicInterval::closed(1, 5));
+//! let b = IntervalSet::from(AtomicInterval::closed(3, 7));
+//!
 //! // Perform set operations
 //! let union = a.union(&b);                    // Results in [1, 7]
 //! let intersection = a.intersection(&b);       // Results in [3, 5]
 //! let difference = a.difference(&b);          // Results in [1, 3)
 //! ```
-//! 
+//!
 //! ## Type Parameters
-//! 
+//!
 //! - `T`: Represents the boundary type for intervals
-//!   - Must implement `Clone`
-//!   - Must implement `PartialOrd` for set operations
+//!   - Must implement [`Clone`]
+//!   - Must implement [`PartialOrd`] for set operations
 use crate::atomic::AtomicInterval;
 
-pub struct Interval<T: Clone> {
-    intervals: Vec<AtomicInterval<T>>,
+#[derive(Debug, Clone, PartialEq)]
+pub struct IntervalSet<T> {
+    /// A vector of AtomicIntervals that make up the IntervalSet
+    pub intervals: Vec<AtomicInterval<T>>,
 }
 
-/// Returns true if this interval set has no intervals.
-///
-/// # Examples
-///
-/// ```
-/// // Suppose `interval` is an `Interval` with no intervals.
-/// assert!(interval.is_empty());
-/// ```
-impl<T: Clone> Interval<T> {
+impl<T: ToString> ToString for IntervalSet<T> {
+    /// Converts the interval set to a string representation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use timekeep_rs::AtomicInterval;
+    /// use timekeep_rs::IntervalSet;
+    ///
+    /// let interval = IntervalSet::from(AtomicInterval::closed(1, 5));
+    /// assert_eq!(interval.to_string(), "[[1, 5]]");
+    /// ```
+    fn to_string(&self) -> String {
+        let mut result = String::from("[");
+        for interval in &self.intervals {
+            result.push_str(&interval.to_string());
+        }
+        result.push_str("]");
+        result
+    }
+    
+}
+
+impl<T: Clone> IntervalSet<T> {
+    /// Returns `true` if this interval set has no intervals.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use timekeep_rs::IntervalSet;
+    ///
+    /// // Suppose `interval` is an `Interval` with no intervals.
+    /// let interval = IntervalSet::<i32> { intervals: vec![] };
+    ///
+    /// assert!(interval.is_empty());
+    /// ```
     pub fn is_empty(&self) -> bool {
         self.intervals.is_empty()
     }
 }
 
-impl<T: Clone> From<AtomicInterval<T>> for Interval<T> {
-    /// Creates a new `Interval<T>` from an `AtomicInterval<T>`.
+impl<T: Clone> From<AtomicInterval<T>> for IntervalSet<T> {
+    /// Creates a new `IntervalSet<T>` from an `AtomicInterval<T>`.
     ///
-    /// This implementation allows converting a single atomic interval into an `Interval`
+    /// This implementation allows converting a single atomic interval into an `IntervalSet<T>`
     /// collection by wrapping it in a vector.
     ///
     /// # Examples
+    ///
     /// ```
     /// use timekeep_rs::AtomicInterval;
-    /// use timekeep_rs::Interval;
-    /// 
+    /// use timekeep_rs::IntervalSet;
+    ///
     /// let atomic = AtomicInterval::closed(1, 5);
-    /// let interval: Interval<i32> = atomic.into();
+    /// let interval: IntervalSet<i32> = atomic.into();
     /// ```
     fn from(interval: AtomicInterval<T>) -> Self {
-        Interval {
+        IntervalSet {
             intervals: vec![interval],
         }
     }
 }
 
-/// A trait implementation for `Interval<T>` where `T` implements `PartialOrd` and `Clone`.
-/// Provides set operations for intervals.
-impl <T: PartialOrd + Clone> Interval<T> {
-    /// Computes the union of two intervals.
+/// A trait implementation for `IntervalSet<T>` where `T` implements `PartialOrd` and `Clone`.
+/// Provides set operations for interval sets.
+impl<T: PartialOrd + Clone> IntervalSet<T> {
+    /// Computes the union of two interval sets.
     ///
-    /// The union of two intervals is the smallest interval that contains both intervals.
-    /// This operation merges overlapping or adjacent intervals.
+    /// The union of two interval sets is a new interval set that contains all the intervals
+    /// from both input sets, merging any overlapping or adjacent intervals.
     ///
     /// # Arguments
     ///
-    /// * `other` - Another interval to compute the union with
+    /// * `other` - Another interval set to compute the union with
     ///
     /// # Returns
     ///
-    /// A new `Interval` representing the union of both intervals
+    /// A new `IntervalSet<T>` representing the union of both interval sets
+    ///
     /// # Examples
     ///
     /// ```
     /// use timekeep_rs::AtomicInterval;
-    /// use timekeep_rs::Interval;
+    /// use timekeep_rs::IntervalSet;
     ///
-    /// // Create two intervals
-    /// let interval1 = Interval::from(AtomicInterval::closed(1, 5));
-    /// let interval2 = Interval::from(AtomicInterval::closed(3, 7));
+    /// // Create two interval sets
+    /// let interval1 = IntervalSet::from(AtomicInterval::closed(1, 5));
+    /// let interval2 = IntervalSet::from(AtomicInterval::closed(3, 7));
     ///
     /// // Compute union (results in [1, 7])
     /// let union = interval1.union(&interval2);
@@ -129,31 +160,32 @@ impl <T: PartialOrd + Clone> Interval<T> {
             merged.push(interval);
         }
 
-        Interval { intervals: merged }
+        IntervalSet { intervals: merged }
     }
 
-    /// Computes the intersection of two intervals.
+    /// Computes the intersection of two interval sets.
     ///
-    /// The intersection of two intervals is the interval containing all points that are in both intervals.
+    /// The intersection of two interval sets is a new interval set that contains all the intervals
+    /// that are common to both input sets.
     ///
     /// # Arguments
     ///
-    /// * `other` - Another interval to compute the intersection with
+    /// * `other` - Another interval set to compute the intersection with
     ///
     /// # Returns
     ///
-    /// * `Some(Interval)` if the intervals intersect
-    /// * `None` if the intervals are disjoint
-    /// 
+    /// * `Some(IntervalSet<T>)` if the interval sets intersect
+    /// * `None` if the interval sets are disjoint
+    ///
     /// # Examples
     ///
     /// ```
     /// use timekeep_rs::AtomicInterval;
-    /// use timekeep_rs::Interval;
+    /// use timekeep_rs::IntervalSet;
     ///
-    /// // Create two intervals
-    /// let interval1 = Interval::from(AtomicInterval::closed(1, 5));
-    /// let interval2 = Interval::from(AtomicInterval::closed(3, 7));
+    /// // Create two interval sets
+    /// let interval1 = IntervalSet::from(AtomicInterval::closed(1, 5));
+    /// let interval2 = IntervalSet::from(AtomicInterval::closed(3, 7));
     ///
     /// // Compute intersection (results in [3, 5])
     /// let intersection = interval1.intersection(&interval2).unwrap();
@@ -172,33 +204,33 @@ impl <T: PartialOrd + Clone> Interval<T> {
         if intervals.is_empty() {
             None
         } else {
-            Some(Interval { intervals })
+            Some(IntervalSet { intervals })
         }
     }
 
-    /// Computes the difference between two intervals.
+    /// Computes the difference between two interval sets.
     ///
     /// The difference A - B contains all points that are in A but not in B.
     ///
     /// # Arguments
     ///
-    /// * `other` - Another interval to subtract from this interval
+    /// * `other` - Another interval set to subtract from this interval set
     ///
     /// # Returns
     ///
-    /// A new `Interval` representing the difference between the intervals
-    /// 
+    /// A new `IntervalSet<T>` representing the difference between the interval sets
+    ///
     /// # Examples
     ///
     /// ```
     /// use timekeep_rs::AtomicInterval;
-    /// use timekeep_rs::Interval;
+    /// use timekeep_rs::IntervalSet;
     ///
-    /// // Create two intervals
-    /// let interval1 = Interval::from(AtomicInterval::closed(1, 5));
-    /// let interval2 = Interval::from(AtomicInterval::closed(3, 7));
+    /// // Create two interval sets
+    /// let interval1 = IntervalSet::from(AtomicInterval::closed(1, 5));
+    /// let interval2 = IntervalSet::from(AtomicInterval::closed(3, 7));
     ///
-    /// // Compute difference (results in [1, 3])
+    /// // Compute difference (results in [1, 3))
     /// let difference = interval1.difference(&interval2);
     /// ```
     pub fn difference(&self, other: &Self) -> Self {
@@ -216,10 +248,8 @@ impl <T: PartialOrd + Clone> Interval<T> {
             result.extend(remaining);
         }
 
-        Interval { intervals: result }
+        IntervalSet { intervals: result }
     }
-
-
 }
 
 #[cfg(test)]
@@ -229,9 +259,9 @@ mod tests {
     #[test]
     fn test_interval_from_atomic_interval() {
         let atomic_interval = AtomicInterval::closed(1, 5);
-        let interval: Interval<i32> = Interval::from(atomic_interval.clone());
-        assert_eq!(interval.intervals.len(), 1);
-        assert_eq!(interval.intervals[0], atomic_interval);
+        let interval_set: IntervalSet<i32> = IntervalSet::from(atomic_interval.clone());
+        assert_eq!(interval_set.intervals.len(), 1);
+        assert_eq!(interval_set.intervals[0], atomic_interval);
     }
 
     #[test]
@@ -240,9 +270,9 @@ mod tests {
         let interval2 = AtomicInterval::closed(4, 7);
         let interval3 = AtomicInterval::closed(2, 4);
         let interval4 = AtomicInterval::closed(7, 8);
-        let union = Interval::from(interval1).union(&Interval::from(interval2));
-        let union = union.union(&Interval::from(interval3));
-        let union = union.union(&Interval::from(interval4));
+        let union = IntervalSet::from(interval1).union(&IntervalSet::from(interval2));
+        let union = union.union(&IntervalSet::from(interval3));
+        let union = union.union(&IntervalSet::from(interval4));
         assert_eq!(union.intervals.len(), 1);
         assert_eq!(union.intervals[0], AtomicInterval::closed(1, 8));
     }
@@ -252,8 +282,8 @@ mod tests {
         let interval1 = AtomicInterval::closed(1, 3);
         let interval2 = AtomicInterval::closed(4, 7);
         let interval3 = AtomicInterval::closed(5, 8);
-        let union = Interval::from(interval1).union(&Interval::from(interval2));
-        let union = union.union(&Interval::from(interval3));
+        let union = IntervalSet::from(interval1).union(&IntervalSet::from(interval2));
+        let union = union.union(&IntervalSet::from(interval3));
         assert_eq!(union.intervals.len(), 2);
         assert_eq!(union.intervals[0], AtomicInterval::closed(1, 3));
         assert_eq!(union.intervals[1], AtomicInterval::closed(4, 8));
@@ -263,8 +293,8 @@ mod tests {
     fn test_intersection_between_two_overlapping_intervals() {
         let interval1 = AtomicInterval::closed(1, 5);
         let interval2 = AtomicInterval::closed(3, 7);
-        let interval1 = Interval::from(interval1);
-        let interval2 = Interval::from(interval2);
+        let interval1 = IntervalSet::from(interval1);
+        let interval2 = IntervalSet::from(interval2);
         let intersection = interval1.intersection(&interval2).unwrap();
         assert_eq!(intersection.intervals.len(), 1);
         assert_eq!(intersection.intervals[0], AtomicInterval::closed(3, 5));
@@ -274,8 +304,8 @@ mod tests {
     fn test_intersection_between_two_disjoint_intervals() {
         let interval1 = AtomicInterval::closed(1, 3);
         let interval2 = AtomicInterval::closed(4, 7);
-        let interval1 = Interval::from(interval1);
-        let interval2 = Interval::from(interval2);
+        let interval1 = IntervalSet::from(interval1);
+        let interval2 = IntervalSet::from(interval2);
         let intersection = interval1.intersection(&interval2);
         assert!(intersection.is_none());
     }
@@ -284,8 +314,8 @@ mod tests {
     fn test_difference_between_two_overlapping_intervals() {
         let interval1 = AtomicInterval::closed(1, 5);
         let interval2 = AtomicInterval::closed(3, 7);
-        let interval1 = Interval::from(interval1);
-        let interval2 = Interval::from(interval2);
+        let interval1 = IntervalSet::from(interval1);
+        let interval2 = IntervalSet::from(interval2);
         let difference = interval1.difference(&interval2);
         assert_eq!(difference.intervals.len(), 1);
         assert_eq!(difference.intervals[0], AtomicInterval::closed_open(1, 3));
@@ -295,12 +325,10 @@ mod tests {
     fn test_difference_between_two_disjoint_intervals() {
         let interval1 = AtomicInterval::closed(1, 3);
         let interval2 = AtomicInterval::closed(4, 7);
-        let interval1 = Interval::from(interval1);
-        let interval2 = Interval::from(interval2);
+        let interval1 = IntervalSet::from(interval1);
+        let interval2 = IntervalSet::from(interval2);
         let difference = interval1.difference(&interval2);
         assert_eq!(difference.intervals.len(), 1);
         assert_eq!(difference.intervals[0], AtomicInterval::closed(1, 3));
     }
-
-
 }

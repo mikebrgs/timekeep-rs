@@ -18,29 +18,88 @@ impl<T: ToString> ToString for AtomicInterval<T> {
 }
 
 
+/// A collection of constructors for creating different types of atomic intervals.
 impl<T: Clone> AtomicInterval<T> {
+    /// Creates an open interval (a,b) that excludes both endpoints.
+    ///
+    /// # Arguments
+    /// * `left` - The left endpoint of the interval
+    /// * `right` - The right endpoint of the interval
+    ///
+    /// # Returns
+    /// A new `AtomicInterval` with excluded endpoints
     pub fn open(left: T, right: T) -> Self {
         AtomicInterval { left: Bound::Excluded(left), right: Bound::Excluded(right) }
     }
 
+    /// Creates a closed interval [a,b] that includes both endpoints.
+    ///
+    /// # Arguments
+    /// * `left` - The left endpoint of the interval
+    /// * `right` - The right endpoint of the interval
+    ///
+    /// # Returns
+    /// A new `AtomicInterval` with included endpoints
     pub fn closed(left: T, right: T) -> Self {
         AtomicInterval { left: Bound::Included(left), right: Bound::Included(right) }
     }
 
+    /// Creates a left-open, right-closed interval (a,b] that excludes the left endpoint and includes the right endpoint.
+    ///
+    /// # Arguments
+    /// * `left` - The left endpoint of the interval
+    /// * `right` - The right endpoint of the interval
+    ///
+    /// # Returns
+    /// A new `AtomicInterval` with excluded left endpoint and included right endpoint
     pub fn open_closed(left: T, right: T) -> Self {
         AtomicInterval { left: Bound::Excluded(left), right: Bound::Included(right) }
     }
 
+    /// Creates a left-closed, right-open interval [a,b) that includes the left endpoint and excludes the right endpoint.
+    ///
+    /// # Arguments
+    /// * `left` - The left endpoint of the interval
+    /// * `right` - The right endpoint of the interval
+    ///
+    /// # Returns
+    /// A new `AtomicInterval` with included left endpoint and excluded right endpoint
     pub fn closed_open(left: T, right: T) -> Self {
         AtomicInterval { left: Bound::Included(left), right: Bound::Excluded(right) }
     }
 
+    /// Creates a point interval [a,a] containing a single value.
+    ///
+    /// # Arguments
+    /// * `value` - The value to create a point interval from
+    ///
+    /// # Returns
+    /// A new `AtomicInterval` representing a single point
     pub fn point(value: T) -> Self {
         AtomicInterval { left: Bound::Included(value.clone()), right: Bound::Included(value) }
     }
 }
 
+/// A collection of methods for performing set operations on atomic intervals.
 impl <T: PartialOrd> AtomicInterval<T> {
+    /// Checks if the interval is a superset of another interval.
+    /// An interval is a superset of another if it contains all the elements of the other interval.
+    /// 
+    /// # Arguments
+    /// * `other` - The other interval to check if it is a subset of the current interval
+    /// 
+    /// # Returns
+    /// `true` if the current interval is a superset of the other interval, `false` otherwise
+    /// 
+    /// # Examples
+    /// ```
+    /// use timekeep_rs::AtomicInterval;
+    ///
+    /// let interval1 = AtomicInterval::closed(1, 5);
+    /// let interval2 = AtomicInterval::closed(2, 4);
+    /// assert!(interval1.is_superset(&interval2));
+    /// ```
+    /// 
     pub fn is_superset (&self, other: &AtomicInterval<T>) -> bool {
         match (&self.left, &self.right, &other.left, &other.right) {
             (Bound::Included(l1), Bound::Excluded(r1), _, Bound::Included(r2)) => l1 <= other.left.value() && r1 > r2,
@@ -50,10 +109,46 @@ impl <T: PartialOrd> AtomicInterval<T> {
         }
     }
 
+    /// Checks if the interval is a subset of another interval.
+    /// An interval is a subset of another if it is contained within the other interval.
+    /// 
+    /// # Arguments
+    /// * `other` - The other interval to check if it is a superset of the current interval
+    ///
+    /// # Returns
+    /// `true` if the current interval is a subset of the other interval, `false` otherwise
+    /// 
+    /// # Examples
+    /// ```
+    /// use timekeep_rs::AtomicInterval;
+    ///
+    /// let interval1 = AtomicInterval::closed(2, 4);
+    /// let interval2 = AtomicInterval::closed(1, 5);
+    /// assert!(interval1.is_subset(&interval2));
+    /// ```
+    /// 
     pub fn is_subset (&self, other: &AtomicInterval<T>) -> bool {
         other.is_superset(self)
     }
 
+    /// Checks if the interval is overlapping with another interval.
+    /// Two intervals are overlapping if they share at least one common point.
+    /// 
+    /// # Arguments
+    /// * `other` - The other interval to check if it is overlapping with the current interval
+    /// 
+    /// # Returns
+    /// `true` if the current interval is overlapping with the other interval, `false` otherwise
+    /// 
+    /// # Examples
+    /// ```
+    /// use timekeep_rs::AtomicInterval;
+    /// 
+    /// let interval1 = AtomicInterval::closed(1, 5);
+    /// let interval2 = AtomicInterval::closed(4, 6);
+    /// assert!(interval1.is_overlapping(&interval2));
+    /// ```
+    /// 
     pub fn is_overlapping (&self, other: &AtomicInterval<T>) -> bool {
 
         let cond1_overlapping = match (&self.left, &self.right, &other.left) {
@@ -78,20 +173,57 @@ impl <T: PartialOrd> AtomicInterval<T> {
         return cond1_overlapping || cond2_overlapping;
     }
 
+    /// Checks if the interval is adjacent to another interval.
+    /// Two intervals are adjacent if they share a common boundary.
+    /// 
+    /// # Arguments
+    /// * `other` - The other interval to check if it is adjacent to the current interval
+    /// 
+    /// # Returns
+    /// `true` if the current interval is adjacent to the other interval, `false` otherwise
+    /// 
+    /// # Examples
+    /// ```
+    /// use timekeep_rs::AtomicInterval;
+    /// 
+    /// let interval1 = AtomicInterval::closed(1, 5);
+    /// let interval2 = AtomicInterval::open_closed(5, 10);
+    /// assert!(interval1.is_adjacent(&interval2));
+    /// ```
     pub fn is_adjacent(&self, other: &AtomicInterval<T>) -> bool {
         let cond1_adjacent = match (&self.left, &other.right) {
             (Bound::Excluded(_), Bound::Excluded(_)) => false,
-            (_, _) => self.right.value() == other.left.value(),
+            (Bound::Included(_), Bound::Included(_)) => false,
+            (_, _) => self.left.value() == other.right.value(),
         };
 
         let cond2_adjacent = match (&self.right, &other.left) {
             (Bound::Excluded(_), Bound::Excluded(_)) => false,
-            (_, _) => self.left.value() == other.right.value(),
+            (Bound::Included(_), Bound::Included(_)) => false,
+            (_, _) => self.right.value() == other.left.value(),
         };
 
         return cond1_adjacent || cond2_adjacent;
     }
 
+    /// Checks if the interval is disjoint from another interval.
+    /// Two intervals are disjoint if they do not share any common points.
+    /// 
+    /// # Arguments
+    /// * `other` - The other interval to check if it is disjoint from the current interval
+    /// 
+    /// # Returns
+    /// `true` if the current interval is disjoint from the other interval, `false` otherwise
+    /// 
+    /// # Examples
+    /// ```
+    /// use timekeep_rs::AtomicInterval;
+    /// 
+    /// let interval1 = AtomicInterval::closed(1, 5);
+    /// let interval2 = AtomicInterval::closed(6, 10);
+    /// assert!(interval1.is_disjoint(&interval2));
+    /// ```
+    /// 
     pub fn is_disjoint(&self, other: &AtomicInterval<T>) -> bool {
         // Check if the intervals are disjoint on one side
         let cond1_disjoint = match (&self.left, &other.right) {
@@ -110,6 +242,26 @@ impl <T: PartialOrd> AtomicInterval<T> {
 }
 
 impl <T: PartialOrd + Clone> AtomicInterval<T> {
+    /// Computes the union of two overlapping or adjacent intervals.
+    /// The union of two intervals is the smallest interval that contains both intervals.
+    /// 
+    /// # Arguments
+    /// * `a` - The first interval to union
+    /// * `b` - The second interval to union
+    /// 
+    /// # Returns
+    /// An `Option` containing the union of the two intervals if they are overlapping or adjacent, `None` otherwise
+    /// 
+    /// # Examples
+    /// ```
+    /// use timekeep_rs::AtomicInterval;
+    /// 
+    /// let interval1 = AtomicInterval::closed(1, 5);
+    /// let interval2 = AtomicInterval::closed(4, 7);
+    /// let merged = AtomicInterval::union(&interval1, &interval2).unwrap();
+    /// assert_eq!(merged, AtomicInterval::closed(1, 7));
+    /// ```
+    /// 
     pub fn union(a: &AtomicInterval<T>, b: &AtomicInterval<T>) -> Option<AtomicInterval<T>> {
         if a.is_overlapping(b) || a.is_adjacent(b) {
             let left = if a.left.value() <= b.left.value() {
@@ -128,6 +280,25 @@ impl <T: PartialOrd + Clone> AtomicInterval<T> {
         }
     }
 
+    /// Computes the intersection of two overlapping intervals.
+    /// The intersection of two intervals is the largest interval that is contained within both intervals.
+    /// 
+    /// # Arguments
+    /// * `other` - The other interval to intersect with the current interval
+    /// 
+    /// # Returns
+    /// An `Option` containing the intersection of the two intervals if they are overlapping, `None` otherwise
+    /// 
+    /// # Examples
+    /// ```
+    /// use timekeep_rs::AtomicInterval;
+    /// 
+    /// let interval1 = AtomicInterval::closed(1, 5);
+    /// let interval2 = AtomicInterval::closed(3, 7);
+    /// let intersection = interval1.intersection(&interval2).unwrap();
+    /// assert_eq!(intersection, AtomicInterval::closed(3, 5));
+    /// ```
+    /// 
     pub fn intersection(&self, other: &Self) -> Option<Self> {
         // If they're disjoint, there's no intersection.
         if self.is_disjoint(other) {
@@ -162,6 +333,26 @@ impl <T: PartialOrd + Clone> AtomicInterval<T> {
         Some(AtomicInterval { left, right })
     }
 
+    /// Computes the difference between two intervals.
+    /// The difference between two intervals is the set of intervals that are in the first interval but not in the second interval.
+    /// 
+    /// # Arguments
+    /// * `other` - The other interval to compute the difference with the current interval
+    /// 
+    /// # Returns
+    /// A `Vec` of `AtomicInterval` representing the difference between the two intervals
+    /// 
+    /// # Examples
+    /// ```
+    /// use timekeep_rs::AtomicInterval;
+    /// 
+    /// let interval1 = AtomicInterval::closed(1, 5);
+    /// let interval2 = AtomicInterval::closed(3, 7);
+    /// let difference = interval1.difference(&interval2);
+    /// assert_eq!(difference.len(), 1);
+    /// assert_eq!(difference[0], AtomicInterval::closed_open(1, 3));
+    /// ```
+    /// 
     pub fn difference(&self, other: &Self) -> Vec<Self> {
         // If disjoint, difference is just self.
         if self.is_disjoint(other) {
@@ -175,11 +366,6 @@ impl <T: PartialOrd + Clone> AtomicInterval<T> {
             Some(i) => i,
             None => panic!("No intersection found!"),
         };
-
-        // // If other covers self completely, no remainder.
-        // if intersection == *self {
-        //     return vec![];
-        // }
 
         let mut result = Vec::new();
 
@@ -267,7 +453,7 @@ mod tests {
     #[test]
     fn test_is_adjacent() {
         let interval1 = AtomicInterval::closed(1, 5);
-        let interval2 = AtomicInterval::closed(5, 10);
+        let interval2 = AtomicInterval::open_closed(5, 10);
         assert!(interval1.is_adjacent(&interval2));
     }
 

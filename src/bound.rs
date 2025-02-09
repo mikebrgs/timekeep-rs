@@ -1,18 +1,63 @@
-#[derive(Debug, PartialOrd, PartialEq, Clone)]
+#[derive(Debug, PartialOrd, PartialEq, Clone, Copy)]
+/// Represents a boundary of an interval.
+/// Can be either inclusive (closed) or exclusive (open).
 pub enum Bound<T> {
-    Included(T),  // Closed boundary [
-    Excluded(T),  // Open boundary (
+    /// Represents an inclusive boundary, meaning the value itself is included in the interval.
+    Included(T),
+    /// Represents an exclusive boundary, meaning the value itself is excluded from the interval.
+    Excluded(T),
 }
 
 impl<T> Bound<T> {
+    /// Creates a new `Bound` that is inclusive.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - The value to be included in the boundary.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use timekeep_rs::Bound;
+    ///
+    /// let inclusive_bound = Bound::included(5);
+    /// assert_eq!(inclusive_bound, Bound::Included(5));
+    /// ```
     pub fn included(value: T) -> Self {
         Bound::Included(value)
     }
 
+    /// Creates a new `Bound` that is exclusive.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - The value to be excluded from the boundary.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use timekeep_rs::Bound;
+    ///
+    /// let exclusive_bound = Bound::excluded(10);
+    /// assert_eq!(exclusive_bound, Bound::Excluded(10));
+    /// ```
     pub fn excluded(value: T) -> Self {
         Bound::Excluded(value)
     }
 
+    /// Returns a reference to the value contained within the `Bound`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use timekeep_rs::Bound;
+    ///
+    /// let inclusive_bound = Bound::included(15);
+    /// assert_eq!(inclusive_bound.value(), &15);
+    ///
+    /// let exclusive_bound = Bound::excluded(20);
+    /// assert_eq!(exclusive_bound.value(), &20);
+    /// ```
     pub fn value(&self) -> &T {
         match self {
             Bound::Included(value) => value,
@@ -20,6 +65,7 @@ impl<T> Bound<T> {
         }
     }
 }
+
 #[cfg(test)]
 mod tests {
     use super::Bound;
@@ -27,18 +73,22 @@ mod tests {
     #[test]
     fn test_included() {
         let bound = Bound::included(5);
-        match bound {
-            Bound::Included(value) => assert_eq!(value, 5),
-            _ => panic!("Expected Bound::Included"),
+        assert_eq!(bound, Bound::Included(5));
+        if let Bound::Included(value) = bound {
+            assert_eq!(value, 5);
+        } else {
+            panic!("Expected Bound::Included");
         }
     }
 
     #[test]
     fn test_excluded() {
         let bound = Bound::excluded(10);
-        match bound {
-            Bound::Excluded(value) => assert_eq!(value, 10),
-            _ => panic!("Expected Bound::Excluded"),
+        assert_eq!(bound, Bound::Excluded(10));
+        if let Bound::Excluded(value) = bound {
+            assert_eq!(value, 10);
+        } else {
+            panic!("Expected Bound::Excluded");
         }
     }
 
