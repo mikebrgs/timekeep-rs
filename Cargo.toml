@@ -1,6 +1,20 @@
 [package]
 name = "timekeep-rs"
 version = "0.1.0"
+authors = ["Miguel Borges <miguel.borges@hotmail.com>"]
 edition = "2021"
 
 [dependencies]
+
+[lib]
+name = "timekeep-rs"
+path = "src/lib.rs"
+
+[description]
+description = "A Rust library for efficient and reliable timekeeping functionalities, providing data structures and methods for creating, manipulating, and performing set operations on intervals (any intervals)."
+
+[repository]
+repository = "https://github.com/mikebrgs/timekeep-rs.git"
+
+[license]
+license = "MIT"
