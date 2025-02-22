@@ -3,12 +3,6 @@
 //! This module provides implementations for interval set operations through the [`IntervalSet`] type,
 //! which manages collections of [`AtomicInterval`]s and supports various set operations.
 //!
-//! ## Core Features
-//!
-//! - Create interval sets from atomic intervals
-//! - Perform set operations (union, intersection, difference)
-//! - Handle both overlapping and disjoint intervals
-//!
 //! ## Main Types
 //!
 //! - [`IntervalSet<T>`]: A collection of atomic intervals supporting set operations
@@ -73,7 +67,7 @@ impl<T: ToString> ToString for IntervalSet<T> {
 }
 
 impl<T: Clone> IntervalSet<T> {
-    /// Returns `true` if this interval set has no intervals.
+    /// Returns `true` if this interval set has no intervals or is empty.
     ///
     /// # Examples
     ///
@@ -88,6 +82,23 @@ impl<T: Clone> IntervalSet<T> {
     pub fn is_empty(&self) -> bool {
         self.intervals.is_empty()
     }
+
+    /// Returns an empty `IntervalSet`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use timekeep_rs::IntervalSet;
+    ///
+    /// // Suppose `interval` is an `Interval` with no intervals.
+    /// let interval = IntervalSet::<i32>::new();
+    ///
+    /// assert!(interval.is_empty());
+    /// ```
+    pub fn new() -> IntervalSet<T> {
+        return IntervalSet { intervals: vec![] }
+    }
+
 }
 
 impl<T: Clone> From<AtomicInterval<T>> for IntervalSet<T> {
@@ -146,14 +157,24 @@ impl<T: PartialOrd + Clone> IntervalSet<T> {
         intervals.extend(other.intervals.iter().cloned());
 
         // Sort intervals by the value of their left boundary.
-        intervals.sort_by(|a, b| a.left.value().partial_cmp(b.left.value()).unwrap());
+        intervals.sort_by(
+            |a, b| a.left().value().partial_cmp(b.left().value()).unwrap()
+        );
 
-        let mut merged = Vec::new();
+        let mut merged: Vec<AtomicInterval<T>> = Vec::new();
 
         for interval in intervals {
             if let Some(last) = merged.last_mut() {
-                if let Some(m) = AtomicInterval::union(last, &interval) {
-                    *last = m;
+                let union_vec = AtomicInterval::union(last, &interval);
+    
+                if union_vec.len() == 1 {
+                    // Successfully merged, update last interval
+                    *last = union_vec.into_iter().next().unwrap();
+                    continue;
+                } else if union_vec.len() > 1 {
+                    // If union() returned multiple intervals, replace last and insert the new one
+                    *last = union_vec[0].clone();
+                    merged.extend(union_vec.into_iter().skip(1));
                     continue;
                 }
             }
@@ -188,23 +209,32 @@ impl<T: PartialOrd + Clone> IntervalSet<T> {
     /// let interval2 = IntervalSet::from(AtomicInterval::closed(3, 7));
     ///
     /// // Compute intersection (results in [3, 5])
-    /// let intersection = interval1.intersection(&interval2).unwrap();
+    /// let intersection = interval1.intersection(&interval2);
     /// ```
-    pub fn intersection(&self, other: &Self) -> Option<Self> {
+    pub fn intersection(&self, other: &Self) -> Self {
         let mut intervals = Vec::new();
 
         for interval in &self.intervals {
             for other_interval in &other.intervals {
-                if let Some(intersection) = interval.intersection(other_interval) {
-                    intervals.push(intersection);
-                }
+                interval.intersection(other_interval).iter().for_each(
+                    |x| intervals.push(x.clone())
+                );
+                // if intersection_vec.len() > 1 {
+                //     panic!("Unexpected behavior from intersection.")
+                // } else if intersection_vec.len() == 1 {
+                //     intervals.push(intersection);
+
+                // }
+                // if let Some(intersection) = interval.intersection(other_interval) {
+                //     intervals.push(intersection);
+                // }
             }
         }
 
         if intervals.is_empty() {
-            None
+            IntervalSet::new()
         } else {
-            Some(IntervalSet { intervals })
+            IntervalSet { intervals }
         }
     }
 
@@ -295,7 +325,7 @@ mod tests {
         let interval2 = AtomicInterval::closed(3, 7);
         let interval1 = IntervalSet::from(interval1);
         let interval2 = IntervalSet::from(interval2);
-        let intersection = interval1.intersection(&interval2).unwrap();
+        let intersection = interval1.intersection(&interval2);
         assert_eq!(intersection.intervals.len(), 1);
         assert_eq!(intersection.intervals[0], AtomicInterval::closed(3, 5));
     }
@@ -307,7 +337,7 @@ mod tests {
         let interval1 = IntervalSet::from(interval1);
         let interval2 = IntervalSet::from(interval2);
         let intersection = interval1.intersection(&interval2);
-        assert!(intersection.is_none());
+        assert!(intersection.is_empty());
     }
 
     #[test]

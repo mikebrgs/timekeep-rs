@@ -1,13 +1,12 @@
 # Timekeep-rs
 
-Timekeep-rs is a Rust library designed to provide efficient and reliable timekeeping functionalities. This library is built with performance and ease of use in mind, making it suitable for a wide range of applications.
+Timekeep-rs is a Rust library designed to provide efficient and reliable timekeeping functionalities. This library is built to be simple and is inspired in the portion library in Python [https://github.com/AlexandreDecan/portion].
 
 ## Features
 
-- High precision timekeeping
 - Easy to use API
-- Lightweight and efficient
-- Suitable for embedded systems
+- Lightweight
+- No dependencies
 
 ## Installation
 

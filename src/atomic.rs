@@ -1,12 +1,46 @@
+//! A module containing the `AtomicInterval` struct and its implementations.
+//! An atomic interval is a closed or open interval that contains a single value or a range of values.
+//! 
+//! # Examples
+//! ```
+//! use timekeep_rs::{AtomicInterval, Bound};
+//! 
+//! let interval = AtomicInterval::closed(1, 5);
+//! assert_eq!(*interval.left(), Bound::Included(1));
+//! assert_eq!(*interval.right(), Bound::Included(5));
+//! ```
+//!
 use crate::Bound;
 
+/// A struct representing an atomic interval.
+/// An atomic interval is a closed or open interval that contains a single value or a range of values.
+/// 
+/// # Fields
+/// * `left` - The left endpoint of the interval
+/// * `right` - The right endpoint of the interval
+/// 
+/// # Examples
+/// ```
+/// use timekeep_rs::{AtomicInterval, Bound};
+///
+/// let interval = AtomicInterval::closed(1, 5);
+/// assert_eq!(*interval.left(), Bound::Included(1));
+/// assert_eq!(*interval.right(), Bound::Included(5));
+/// ```
+/// 
 #[derive(PartialEq, Debug, Clone)]
 pub struct AtomicInterval<T> {
-    pub left: Bound<T>,
-    pub right: Bound<T>,
+    left: Bound<T>,
+    right: Bound<T>,
 }
 
+
+/// Implementation of the `ToString` trait for `AtomicInterval`.
 impl<T: ToString> ToString for AtomicInterval<T> {
+    /// This allows `AtomicInterval` to be converted to a string.
+    /// 
+    /// # Returns
+    /// A string representation of the `AtomicInterval`
     fn to_string(&self) -> String {
         match (&self.left, &self.right) {
             (Bound::Included(l), Bound::Included(r)) => format!("[{}, {}]", l.to_string(), r.to_string()),
@@ -19,7 +53,7 @@ impl<T: ToString> ToString for AtomicInterval<T> {
 
 
 /// A collection of constructors for creating different types of atomic intervals.
-impl<T: Clone> AtomicInterval<T> {
+impl<T: Clone + PartialOrd> AtomicInterval<T> {
     /// Creates an open interval (a,b) that excludes both endpoints.
     ///
     /// # Arguments
@@ -29,6 +63,9 @@ impl<T: Clone> AtomicInterval<T> {
     /// # Returns
     /// A new `AtomicInterval` with excluded endpoints
     pub fn open(left: T, right: T) -> Self {
+        if left >= right {
+            panic!("The following condition must be valid: `left < right`");
+        }
         AtomicInterval { left: Bound::Excluded(left), right: Bound::Excluded(right) }
     }
 
@@ -41,6 +78,9 @@ impl<T: Clone> AtomicInterval<T> {
     /// # Returns
     /// A new `AtomicInterval` with included endpoints
     pub fn closed(left: T, right: T) -> Self {
+        if left >= right {
+            panic!("The following condition must be valid: `left < right`");
+        }
         AtomicInterval { left: Bound::Included(left), right: Bound::Included(right) }
     }
 
@@ -53,6 +93,9 @@ impl<T: Clone> AtomicInterval<T> {
     /// # Returns
     /// A new `AtomicInterval` with excluded left endpoint and included right endpoint
     pub fn open_closed(left: T, right: T) -> Self {
+        if left >= right {
+            panic!("The following condition must be valid: `left < right`");
+        }
         AtomicInterval { left: Bound::Excluded(left), right: Bound::Included(right) }
     }
 
@@ -65,6 +108,9 @@ impl<T: Clone> AtomicInterval<T> {
     /// # Returns
     /// A new `AtomicInterval` with included left endpoint and excluded right endpoint
     pub fn closed_open(left: T, right: T) -> Self {
+        if left >= right {
+            panic!("The following condition must be valid: `left < right`");
+        }
         AtomicInterval { left: Bound::Included(left), right: Bound::Excluded(right) }
     }
 
@@ -77,6 +123,25 @@ impl<T: Clone> AtomicInterval<T> {
     /// A new `AtomicInterval` representing a single point
     pub fn point(value: T) -> Self {
         AtomicInterval { left: Bound::Included(value.clone()), right: Bound::Included(value) }
+    }
+}
+
+
+impl<T> AtomicInterval<T> {
+    /// Return a reference to the left bound.
+    /// 
+    /// # Returns
+    /// A reference of `Bound` associated to the left bound.
+    pub fn left(&self) -> &Bound<T> {
+        &self.left
+    }
+
+    /// Return a reference to the right bound.
+    /// 
+    /// # Returns
+    /// A reference of `Bound` associated to the right bound.
+    pub fn right(&self) -> &Bound<T> {
+        &self.right
     }
 }
 
@@ -150,7 +215,7 @@ impl <T: PartialOrd> AtomicInterval<T> {
     /// ```
     /// 
     pub fn is_overlapping (&self, other: &AtomicInterval<T>) -> bool {
-
+        // Check if the intervals are overlapping on left side of other
         let cond1_overlapping = match (&self.left, &self.right, &other.left) {
             (Bound::Included(l1), Bound::Included(r1), _) => other.left.value() >= l1 && other.left.value() <= r1,
             (Bound::Included(l1), Bound::Excluded(r1), Bound::Included(l2)) => l2 >= l1 && l2 < r1,
@@ -160,6 +225,7 @@ impl <T: PartialOrd> AtomicInterval<T> {
             (Bound::Excluded(l1), Bound::Excluded(r1), Bound::Included(l2)) => l2 > l1 && l2 < r1,
             (Bound::Excluded(l1), Bound::Excluded(r1), Bound::Excluded(l2)) => l2 >= l1 && l2 <= r1,
         };
+        // Check if the intervals are overlapping on right side of other
         let cond2_overlapping = match (&self.left, &self.right, &other.right) {
             (Bound::Included(l1), Bound::Included(r1), _) => other.right.value() >= l1 && other.right.value() <= r1,
             (Bound::Included(l1), Bound::Excluded(r1), Bound::Included(r2)) => r2 > l1 && r2 <= r1,
@@ -169,12 +235,12 @@ impl <T: PartialOrd> AtomicInterval<T> {
             (Bound::Excluded(l1), Bound::Excluded(r1), Bound::Included(r2)) => r2 > l1 && r2 < r1,
             (Bound::Excluded(l1), Bound::Excluded(r1), Bound::Excluded(r2)) => r2 >= l1 && r2 <= r1,
         };
-
+        // They overlap if either condition is true
         return cond1_overlapping || cond2_overlapping;
     }
 
     /// Checks if the interval is adjacent to another interval.
-    /// Two intervals are adjacent if they share a common boundary.
+    /// Two intervals are adjacent if they share a common boundary, but do not overlap.
     /// 
     /// # Arguments
     /// * `other` - The other interval to check if it is adjacent to the current interval
@@ -191,12 +257,13 @@ impl <T: PartialOrd> AtomicInterval<T> {
     /// assert!(interval1.is_adjacent(&interval2));
     /// ```
     pub fn is_adjacent(&self, other: &AtomicInterval<T>) -> bool {
+        // Check if the intervals are adjacent on left side of other
         let cond1_adjacent = match (&self.left, &other.right) {
             (Bound::Excluded(_), Bound::Excluded(_)) => false,
             (Bound::Included(_), Bound::Included(_)) => false,
             (_, _) => self.left.value() == other.right.value(),
         };
-
+        // Check if the intervals are adjacent on right side of other
         let cond2_adjacent = match (&self.right, &other.left) {
             (Bound::Excluded(_), Bound::Excluded(_)) => false,
             (Bound::Included(_), Bound::Included(_)) => false,
@@ -250,7 +317,7 @@ impl <T: PartialOrd + Clone> AtomicInterval<T> {
     /// * `b` - The second interval to union
     /// 
     /// # Returns
-    /// An `Option` containing the union of the two intervals if they are overlapping or adjacent, `None` otherwise
+    /// A `Vec` containing the union of the two intervals if they are overlapping or adjacent, an empty `Vec` otherwise
     /// 
     /// # Examples
     /// ```
@@ -258,11 +325,13 @@ impl <T: PartialOrd + Clone> AtomicInterval<T> {
     /// 
     /// let interval1 = AtomicInterval::closed(1, 5);
     /// let interval2 = AtomicInterval::closed(4, 7);
-    /// let merged = AtomicInterval::union(&interval1, &interval2).unwrap();
-    /// assert_eq!(merged, AtomicInterval::closed(1, 7));
+    /// let merged = AtomicInterval::union(&interval1, &interval2);
+    /// 
+    /// assert_eq!(merged.len(), 1);
+    /// assert_eq!(merged.first().unwrap(), &AtomicInterval::closed(1, 7));
     /// ```
     /// 
-    pub fn union(a: &AtomicInterval<T>, b: &AtomicInterval<T>) -> Option<AtomicInterval<T>> {
+    pub fn union(a: &AtomicInterval<T>, b: &AtomicInterval<T>) -> Vec<AtomicInterval<T>> {
         if a.is_overlapping(b) || a.is_adjacent(b) {
             let left = if a.left.value() <= b.left.value() {
                 a.left.clone()
@@ -274,9 +343,9 @@ impl <T: PartialOrd + Clone> AtomicInterval<T> {
             } else {
                 b.right.clone()
             };
-            Some(AtomicInterval { left, right })
+            vec![AtomicInterval { left, right }]
         } else {
-            None
+            vec![]
         }
     }
 
@@ -287,7 +356,7 @@ impl <T: PartialOrd + Clone> AtomicInterval<T> {
     /// * `other` - The other interval to intersect with the current interval
     /// 
     /// # Returns
-    /// An `Option` containing the intersection of the two intervals if they are overlapping, `None` otherwise
+    /// A `Vec` containing the intersection of the two intervals if they are overlapping, an empty `Vec` otherwise
     /// 
     /// # Examples
     /// ```
@@ -295,14 +364,16 @@ impl <T: PartialOrd + Clone> AtomicInterval<T> {
     /// 
     /// let interval1 = AtomicInterval::closed(1, 5);
     /// let interval2 = AtomicInterval::closed(3, 7);
-    /// let intersection = interval1.intersection(&interval2).unwrap();
-    /// assert_eq!(intersection, AtomicInterval::closed(3, 5));
+    /// let intersection = interval1.intersection(&interval2);
+    /// 
+    /// assert_eq!(intersection.len(), 1);
+    /// assert_eq!(intersection.first().unwrap(), &AtomicInterval::closed(3, 5));
     /// ```
     /// 
-    pub fn intersection(&self, other: &Self) -> Option<Self> {
+    pub fn intersection(&self, other: &Self) -> Vec<Self> {
         // If they're disjoint, there's no intersection.
         if self.is_disjoint(other) {
-            return None;
+            return vec![];
         }
 
         // Determine the left boundary of the intersection.
@@ -323,14 +394,14 @@ impl <T: PartialOrd + Clone> AtomicInterval<T> {
         if left.value() == right.value() {
             return match (left, right) {
                 (Bound::Included(val), Bound::Included(_)) => {
-                    Some(AtomicInterval { left: Bound::Included(val.clone()), right: Bound::Included(val) })
+                    vec![ AtomicInterval { left: Bound::Included(val.clone()), right: Bound::Included(val) } ]
                 }
-                _ => None,
+                _ => vec![],
             };
         }
 
         // Otherwise, we have a valid overlapping range.
-        Some(AtomicInterval { left, right })
+        vec![ AtomicInterval { left, right } ]
     }
 
     /// Computes the difference between two intervals.
@@ -362,10 +433,8 @@ impl <T: PartialOrd + Clone> AtomicInterval<T> {
         }
 
         // If there's no intersection, difference is self.
-        let intersection = match self.intersection(other) {
-            Some(i) => i,
-            None => panic!("No intersection found!"),
-        };
+        let intersection_vec = self.intersection(other);
+        let intersection = intersection_vec.first().expect("No intersection found!");
 
         let mut result = Vec::new();
 
@@ -482,16 +551,18 @@ mod tests {
     fn test_union_overlapping_intervals() {
         let interval1 = AtomicInterval::closed(1, 5);
         let interval2 = AtomicInterval::closed(4, 7);
-        let merged = AtomicInterval::union(&interval1, &interval2).unwrap();
-        assert_eq!(merged, AtomicInterval::closed(1, 7));
+        let merged = AtomicInterval::union(&interval1, &interval2);
+        assert_eq!(merged.len(), 1);
+        assert_eq!(merged.first().unwrap(), &AtomicInterval::closed(1, 7));
     }
 
     #[test]
     fn test_union_adjacent_intervals() {
         let interval1 = AtomicInterval::closed(1, 5);
         let interval2 = AtomicInterval::closed(5, 7);
-        let merged = AtomicInterval::union(&interval1, &interval2).unwrap();
-        assert_eq!(merged, AtomicInterval::closed(1, 7));
+        let merged = AtomicInterval::union(&interval1, &interval2);
+        assert_eq!(merged.len(), 1);
+        assert_eq!(merged.first().unwrap(), &AtomicInterval::closed(1, 7));
     }
 
     #[test]
@@ -499,15 +570,16 @@ mod tests {
         let interval1 = AtomicInterval::closed(1, 5);
         let interval2 = AtomicInterval::closed(6, 7);
         let merged = AtomicInterval::union(&interval1, &interval2);
-        assert_eq!(merged, None);
+        assert_eq!(merged.len(), 0);
     }
 
     #[test]
     fn test_intersection_between_two_overlapping_intervals() {
         let interval1 = AtomicInterval::closed(1, 5);
         let interval2 = AtomicInterval::closed(3, 7);
-        let intersection = interval1.intersection(&interval2).unwrap();
-        assert_eq!(intersection, AtomicInterval::closed(3, 5));
+        let intersection = interval1.intersection(&interval2);
+        assert_eq!(intersection.len(), 1);
+        assert_eq!(intersection.first().unwrap(), &AtomicInterval::closed(3, 5));
     }
 
     #[test]
@@ -515,7 +587,7 @@ mod tests {
         let interval1 = AtomicInterval::closed(1, 3);
         let interval2 = AtomicInterval::closed(4, 7);
         let intersection = interval1.intersection(&interval2);
-        assert!(intersection.is_none());
+        assert_eq!(intersection.len(), 0);
     }
 
     #[test]
@@ -523,7 +595,7 @@ mod tests {
         let interval1 = AtomicInterval::closed(1, 5);
         let interval2 = AtomicInterval::open(5, 7);
         let intersection = interval1.intersection(&interval2);
-        assert!(intersection.is_none());
+        assert_eq!(intersection.len(), 0);
     }
 
     #[test]

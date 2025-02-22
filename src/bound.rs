@@ -1,3 +1,15 @@
+//! A module containing the `Bound` struct and its implementations.
+//! A bound can either include or not include the value: `Included(T)` and `Excluded(T)`.
+//! 
+//! # Examples
+//! ```
+//! use timekeep_rs::Bound;
+//! 
+//! let included_bound = Bound::Included(5);
+//! let excluded_bound = Bound::Excluded(5);
+//! ```
+//!
+
 #[derive(Debug, PartialOrd, PartialEq, Clone, Copy)]
 /// Represents a boundary of an interval.
 /// Can be either inclusive (closed) or exclusive (open).
@@ -8,43 +20,8 @@ pub enum Bound<T> {
     Excluded(T),
 }
 
+/// Methods for `Bound`.
 impl<T> Bound<T> {
-    /// Creates a new `Bound` that is inclusive.
-    ///
-    /// # Arguments
-    ///
-    /// * `value` - The value to be included in the boundary.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use timekeep_rs::Bound;
-    ///
-    /// let inclusive_bound = Bound::included(5);
-    /// assert_eq!(inclusive_bound, Bound::Included(5));
-    /// ```
-    pub fn included(value: T) -> Self {
-        Bound::Included(value)
-    }
-
-    /// Creates a new `Bound` that is exclusive.
-    ///
-    /// # Arguments
-    ///
-    /// * `value` - The value to be excluded from the boundary.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use timekeep_rs::Bound;
-    ///
-    /// let exclusive_bound = Bound::excluded(10);
-    /// assert_eq!(exclusive_bound, Bound::Excluded(10));
-    /// ```
-    pub fn excluded(value: T) -> Self {
-        Bound::Excluded(value)
-    }
-
     /// Returns a reference to the value contained within the `Bound`.
     ///
     /// # Examples
@@ -52,10 +29,10 @@ impl<T> Bound<T> {
     /// ```
     /// use timekeep_rs::Bound;
     ///
-    /// let inclusive_bound = Bound::included(15);
+    /// let inclusive_bound = Bound::Included(15);
     /// assert_eq!(inclusive_bound.value(), &15);
     ///
-    /// let exclusive_bound = Bound::excluded(20);
+    /// let exclusive_bound = Bound::Excluded(20);
     /// assert_eq!(exclusive_bound.value(), &20);
     /// ```
     pub fn value(&self) -> &T {
@@ -72,7 +49,7 @@ mod tests {
 
     #[test]
     fn test_included() {
-        let bound = Bound::included(5);
+        let bound = Bound::Included(5);
         assert_eq!(bound, Bound::Included(5));
         if let Bound::Included(value) = bound {
             assert_eq!(value, 5);
@@ -83,7 +60,7 @@ mod tests {
 
     #[test]
     fn test_excluded() {
-        let bound = Bound::excluded(10);
+        let bound = Bound::Excluded(10);
         assert_eq!(bound, Bound::Excluded(10));
         if let Bound::Excluded(value) = bound {
             assert_eq!(value, 10);
@@ -94,43 +71,43 @@ mod tests {
 
     #[test]
     fn test_value_included() {
-        let bound = Bound::included(15);
+        let bound = Bound::Included(15);
         assert_eq!(bound.value(), &15);
     }
 
     #[test]
     fn test_value_excluded() {
-        let bound = Bound::excluded(20);
+        let bound = Bound::Excluded(20);
         assert_eq!(bound.value(), &20);
     }
 
     #[test]
     fn test_partial_eq() {
-        let bound1 = Bound::included(25);
-        let bound2 = Bound::included(25);
+        let bound1 = Bound::Included(25);
+        let bound2 = Bound::Included(25);
         assert_eq!(bound1, bound2);
 
-        let bound3 = Bound::excluded(30);
-        let bound4 = Bound::excluded(30);
+        let bound3 = Bound::Excluded(30);
+        let bound4 = Bound::Excluded(30);
         assert_eq!(bound3, bound4);
 
-        let bound5 = Bound::included(35);
-        let bound6 = Bound::excluded(35);
+        let bound5 = Bound::Included(35);
+        let bound6 = Bound::Excluded(35);
         assert_ne!(bound5, bound6);
     }
 
     #[test]
     fn test_partial_ord() {
-        let bound1 = Bound::included(5);
-        let bound2 = Bound::included(10);
+        let bound1 = Bound::Included(5);
+        let bound2 = Bound::Included(10);
         assert!(bound1 < bound2);
 
-        let bound3 = Bound::excluded(15);
-        let bound4 = Bound::excluded(20);
+        let bound3 = Bound::Excluded(15);
+        let bound4 = Bound::Excluded(20);
         assert!(bound3 < bound4);
 
-        let bound5 = Bound::included(25);
-        let bound6 = Bound::excluded(25);
+        let bound5 = Bound::Included(25);
+        let bound6 = Bound::Excluded(25);
         assert!(bound5 < bound6);
     }
 }
